@@ -18,8 +18,8 @@ APP_PUBLISHER = "Covex Studios"
 APP_VERSION = "1.0.0"
 
 # TODO: change these to your real repo when ready
-UPDATE_JSON_URL = "https://raw.githubusercontent.com/YourUser/YourRepo/main/version.json"
-RELEASE_PAGE_URL = "https://github.com/YourUser/YourRepo/releases"
+UPDATE_JSON_URL = "https://raw.githubusercontent.com/Covex-Studios/CSFiveMTool/refs/heads/main/version.json?token=GHSAT0AAAAAADQFF7C5NSVWR7QI2SBSZKDE2JIO6XQ"
+RELEASE_PAGE_URL = "https://github.com/Covex-Studios/CSFiveMTool/releases"
 
 DB_FILE = "servers.json"
 
