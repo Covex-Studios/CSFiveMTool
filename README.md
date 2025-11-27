@@ -14,6 +14,8 @@ A desktop tool by **Covex Studios** to manage multiple FiveM FXServer / txAdmin 
   - `csservers restart <name_or_key>`
 - Auto-update check with one-click installer download
 
+<img width="951" height="575" alt="image" src="https://github.com/user-attachments/assets/eb81ff5f-9dee-4974-bd20-76ecad0270f5" />
+
 ## Installation
 
 1. Download the latest `CSFiveMToolSetup.exe` from the [Releases](https://github.com/Covex-Studios/CSFiveMTool/releases) page.
