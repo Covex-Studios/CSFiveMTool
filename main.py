@@ -4,6 +4,7 @@ import json
 import subprocess
 import webbrowser
 import re
+
 import requests
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QListWidget, QVBoxLayout, QHBoxLayout, QLabel,
@@ -17,9 +18,18 @@ APP_NAME = "CS FiveM Management Tool"
 APP_PUBLISHER = "Covex Studios"
 APP_VERSION = "1.0.0"
 
-# TODO: change these to your real repo when ready
-UPDATE_JSON_URL = "https://raw.githubusercontent.com/Covex-Studios/CSFiveMTool/refs/heads/main/version.json?token=GHSAT0AAAAAADQFF7C5NSVWR7QI2SBSZKDE2JIO6XQ"
+# GitHub URLs – update these to match your repo
+# version.json in your repo root:
+# {
+#   "version": "1.0.0"
+# }
+UPDATE_JSON_URL = "https://raw.githubusercontent.com/Covex-Studios/CSFiveMTool/main/version.json"
+
+# Releases page (for manual viewing if needed)
 RELEASE_PAGE_URL = "https://github.com/Covex-Studios/CSFiveMTool/releases"
+
+# Direct link to latest installer .exe (uploaded in Releases)
+INSTALLER_DOWNLOAD_URL = "https://github.com/Covex-Studios/CSFiveMTool/releases/latest/download/CSFiveMToolSetup.exe"
 
 DB_FILE = "servers.json"
 
@@ -98,7 +108,7 @@ def start_server_process(server: dict):
 def kill_fxserver_for_dir(server: dict):
     """
     Best-effort: stop FXServer only for this server's folder if possible.
-    If detection fails, it falls back to killing all FXServer.exe.
+    Fallback: kills all FXServer.exe.
     """
     dirp = os.path.abspath(server["dir"])
 
@@ -110,23 +120,18 @@ def kill_fxserver_for_dir(server: dict):
         )
         lines = [l.strip() for l in out.splitlines() if l.strip()]
         if len(lines) <= 1:
-            # no processes or header only, nothing to kill
             return
 
-        header = lines[0]
         for line in lines[1:]:
             parts = re.split(r"\s{2,}", line)
             if len(parts) < 2:
                 continue
-            exe_path, pid_str = parts[0], parts[1]
-            exe_path = exe_path.strip()
-            pid_str = pid_str.strip()
+            exe_path, pid_str = parts[0].strip(), parts[1].strip()
             if not exe_path or not pid_str:
                 continue
 
             try:
                 exe_dir = os.path.dirname(os.path.abspath(exe_path))
-                # if the exe folder starts with our server dir, assume it's that server
                 common = os.path.commonpath([exe_dir, dirp])
                 if common == dirp:
                     subprocess.call(
@@ -172,13 +177,16 @@ def is_server_running(server: dict) -> bool:
         pass
     return False
 
+
+# ---------------- CLI handling ----------------
+
 ASCII_LOGO = r"""
 _________   _________ _________                                       
 \_   ___ \ /   _____//   _____/ ______________  __ ___________  ______
 /    \  \/ \_____  \ \_____  \_/ __ \_  __ \  \/ // __ \_  __ \/  ___/
 \     \____/        \/        \  ___/|  | \/\   /\  ___/|  | \/\___ \ 
  \______  /_______  /_______  /\___  >__|    \_/  \___  >__|  /____  >
-        \/        \/        \/     \/                 \/           \/ 
+        \/        \/        \/     \/                 \/           \/  
                                                 /_/  by Covex Studios
 """.strip("\n")
 
@@ -289,7 +297,7 @@ class ServerManagerApp(QWidget):
         left.addWidget(self.list_widget, stretch=1)
 
         # status label (per selected server, best-effort)
-        self.status_label = QLabel("Status: Unknown")
+        self.status_label = QLabel("Status: No server selected")
         self.status_label.setStyleSheet("color: #bbbbbb; font-size: 11px; margin-top: 4px;")
         left.addWidget(self.status_label)
 
@@ -459,7 +467,7 @@ class ServerManagerApp(QWidget):
         footer.addWidget(version_label, alignment=Qt.AlignmentFlag.AlignLeft)
 
         github_label = QLabel(
-            '<a href="https://github.com/YourUser/YourRepo">GitHub: CS FiveM Tool</a>'
+            '<a href="https://github.com/Covex-Studios/CSFiveMTool">GitHub: CS FiveM Tool</a>'
         )
         github_label.setOpenExternalLinks(True)
         github_label.setStyleSheet("color: #58a6ff; font-size: 10px;")
@@ -608,7 +616,7 @@ class ServerManagerApp(QWidget):
     def open_txadmin(self):
         """
         Simple: open default txAdmin URL.
-        If you have a custom port or URL, change it here.
+        Change port/host here if needed.
         """
         webbrowser.open("http://localhost:40120/")
 
@@ -642,31 +650,81 @@ class ServerManagerApp(QWidget):
             QMessageBox.warning(self, "Restart error", str(e))
         self.update_status_label()
 
-    # -------- update check --------
+    # -------- update check + auto-download --------
 
     def check_for_updates(self):
         if not UPDATE_JSON_URL.startswith("http"):
             return
+
+        def parse_ver(v: str):
+            try:
+                return tuple(int(x) for x in v.split("."))
+            except Exception:
+                return (0,)
+
         try:
             resp = requests.get(UPDATE_JSON_URL, timeout=3)
             if resp.status_code != 200:
                 return
+
             data = resp.json()
-            latest = data.get("version", APP_VERSION)
-            if latest != APP_VERSION:
-                reply = QMessageBox.question(
-                    self,
-                    "Update available",
-                    f"A new version ({latest}) is available.\n"
-                    f"You are on {APP_VERSION}.\n\n"
-                    "Open download page?",
-                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-                )
-                if reply == QMessageBox.StandardButton.Yes:
-                    webbrowser.open(RELEASE_PAGE_URL)
+            latest = data.get("version", APP_VERSION).strip()
+
+            if parse_ver(latest) <= parse_ver(APP_VERSION):
+                return  # up to date or newer dev build
+
+            reply = QMessageBox.question(
+                self,
+                "Update available",
+                f"A new version ({latest}) is available.\n"
+                f"You are on {APP_VERSION}.\n\n"
+                "Do you want to download and run the installer now?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                self.download_and_run_installer(latest)
+
         except Exception:
             # silent fail if no internet / GitHub down
             pass
+
+    def download_and_run_installer(self, latest_version: str):
+        if not INSTALLER_DOWNLOAD_URL.startswith("http"):
+            QMessageBox.warning(self, "Update",
+                                "Installer URL is not configured.")
+            return
+
+        try:
+            download_dir = os.path.join(os.path.expanduser("~"), "Downloads")
+            os.makedirs(download_dir, exist_ok=True)
+            installer_path = os.path.join(
+                download_dir,
+                f"CSFiveMToolSetup_{latest_version}.exe"
+            )
+
+            resp = requests.get(INSTALLER_DOWNLOAD_URL, stream=True, timeout=15)
+            resp.raise_for_status()
+
+            with open(installer_path, "wb") as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+
+            QMessageBox.information(
+                self,
+                "Update downloaded",
+                f"Installer downloaded to:\n{installer_path}\n\n"
+                "The installer will now run. Please close this app when asked."
+            )
+
+            subprocess.Popen([installer_path], shell=False)
+
+        except Exception as e:
+            QMessageBox.warning(
+                self,
+                "Update failed",
+                f"Failed to download or run installer:\n{e}"
+            )
 
 
 # ---------------- entry ----------------
