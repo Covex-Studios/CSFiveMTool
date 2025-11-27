@@ -31,9 +31,13 @@ csservers start dev-server
 ## Configuration
 
 Inside the GUI:
+
 Key – short name, e.g. dev or dev-server
+
 Display name – friendly name for the server
+
 FXServer folder – folder that contains FXServer.exe (e.g. D:\FiveM-Servers\FX-Servers\covex-dev\atifact)
+
 TXAdmin profile – profile name without .base (e.g. covex-studios)
 
 The tool will automatically generate <key>.bat in your FXServer folder.
