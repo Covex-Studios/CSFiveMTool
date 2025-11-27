@@ -4,8 +4,8 @@ import json
 import subprocess
 import webbrowser
 import re
-
 import requests
+
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QListWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QLineEdit, QFileDialog, QMessageBox
